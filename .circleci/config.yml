@@ -2,22 +2,27 @@ version: 2
 jobs:
   build:
     docker:
-        - image: circleci/python:3.6.8
-    steps: 
+      - image: cimg/python:3.7
+
+    steps:
       - checkout
 
   # publish jobs require $DOCKER_USER, $DOCKER_PASS defined
   publish:
     docker:
-        - image: circleci/python:3.6.8
+      - image: cimg/python:3.7
+
     steps:
       - checkout
+
       - setup_remote_docker
+
       - run:
           command: |
             source ".circleci/parse-tag.sh"
             DOCKERHUB_DESTINATION="$DOCKERHUB_REPO:$LATEST_TAG"
             source ".circleci/push-image.sh"
+
 workflows:
   version: 2
   publish:
