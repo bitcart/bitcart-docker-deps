@@ -1,11 +1,11 @@
-FROM python:3.7.10-stretch as builder
+FROM python:3.8.10-stretch as builder
 # Add env
 ENV LANG C.UTF-8
 
 RUN apt-get update && apt-get install -qq --no-install-recommends unzip
 
 # Set the versions
-ENV DOCKER_COMPOSE_VER 1.28.6
+ENV DOCKER_COMPOSE_VER 1.29.2
 # docker-compose requires pyinstaller (check github.com/docker/compose/requirements-build.txt)
 # If this changes, you may need to modify the version of "six" below
 ENV PYINSTALLER_VER 4.1
@@ -21,7 +21,7 @@ RUN pip install six==$SIX_VER
 WORKDIR /build/pyinstallerbootloader
 RUN curl -fsSL https://github.com/pyinstaller/pyinstaller/releases/download/v$PYINSTALLER_VER/PyInstaller-$PYINSTALLER_VER.tar.gz | tar xvz >/dev/null \
     && cd pyinstaller-$PYINSTALLER_VER/bootloader \
-    && python3.7 waf configure all && cd .. && python3.7 -m pip install .
+    && python3.8 waf configure all && cd .. && python3.8 -m pip install .
 
 # Clone docker-compose
 WORKDIR /build/dockercompose
