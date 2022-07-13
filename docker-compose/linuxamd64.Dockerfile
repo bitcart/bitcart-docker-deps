@@ -1,4 +1,4 @@
-FROM python:3.8.10-stretch as builder
+FROM python:3.8-bullseye as builder
 # Add env
 ENV LANG C.UTF-8
 
@@ -38,7 +38,7 @@ RUN cd compose-$DOCKER_COMPOSE_VER \
     && mkdir /dist \
     && mv dist/docker-compose /dist/docker-compose
 
-FROM debian:stretch-slim
+FROM debian:bullseye-slim
 
 COPY --from=builder /dist/docker-compose /tmp/docker-compose
 

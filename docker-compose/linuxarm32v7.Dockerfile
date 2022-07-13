@@ -1,7 +1,7 @@
-FROM python:3.8.10-stretch as qemu
+FROM python:3.8-bullseye as qemu
 RUN apt-get update && apt-get install -qq --no-install-recommends qemu-user-static binfmt-support
 
-FROM arm32v7/python:3.8.10-stretch as builder
+FROM arm32v7/python:3.8-bullseye as builder
 # Add env
 ENV LANG C.UTF-8
 
@@ -45,7 +45,7 @@ RUN cd compose-$DOCKER_COMPOSE_VER \
     && mkdir /dist \
     && mv dist/docker-compose /dist/docker-compose
 
-FROM arm32v7/debian:stretch-slim
+FROM arm32v7/debian:bullseye-slim
 
 COPY --from=builder /dist/docker-compose /tmp/docker-compose
 # Copy out the generated binary
