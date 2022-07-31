@@ -5,7 +5,7 @@ mkdir -p "$(dirname $TOR_CONFIG)"
 
 mkdir -p "$TOR_DATA"
 chown -R tor "$TOR_DATA"
-chmod 750 "$TOR_DATA"
+chmod 700 "$TOR_DATA"
 
 mkdir -p "/var/lib/tor/hidden_services"
 chown -R tor /var/lib/tor/hidden_services
