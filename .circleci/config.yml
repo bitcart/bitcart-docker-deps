@@ -38,23 +38,6 @@ jobs:
                 echo "Skipping linuxarm64v8 because $DOCKERHUB_DOCKEFILE is not found"
             fi
 
-  publish_linuxarm32v7:
-    executor: bitcartcc/build-ubuntu
-    steps:
-      - checkout
-      - bitcartcc/login-to-dockerhub
-      - run:
-          command: |
-            source ".circleci/parse-tag.sh"
-            DOCKERHUB_DOCKEFILE="$DOCKERHUB_DOCKEFILE_ARM32"
-            DOCKERHUB_DESTINATION="$DOCKERHUB_REPO:$LATEST_TAG-arm32v7"
-            if [ -f $DOCKERHUB_DOCKEFILE ]; then
-                docker run --privileged --rm multiarch/qemu-user-static:register --reset
-                source ".circleci/push-image.sh"
-            else
-                echo "Skipping linuxarm32v7 because $DOCKERHUB_DOCKEFILE is not found"
-            fi
-
   publish_multiarch:
     executor: bitcartcc/build-ubuntu
     steps:
@@ -70,18 +53,12 @@ jobs:
             if [ -f $DOCKERHUB_DOCKEFILE_ARM64 ]; then
                 IMAGES="$IMAGES $DOCKERHUB_DESTINATION-arm64v8"
             fi
-            if [ -f $DOCKERHUB_DOCKEFILE_ARM32 ]; then
-                IMAGES="$IMAGES $DOCKERHUB_DESTINATION-arm32v7"
-            fi
             if [ -z "$IMAGES" ]; then
                 echo "Skipping $DOCKERHUB_DESTINATION as there were no supported platforms to build for"
             else
                 docker manifest create --amend $DOCKERHUB_DESTINATION $IMAGES 
                 if [ -f $DOCKERHUB_DOCKEFILE_AMD64 ]; then
                     docker manifest annotate $DOCKERHUB_DESTINATION $DOCKERHUB_DESTINATION-amd64 --os linux --arch amd64         
-                fi
-                if [ -f $DOCKERHUB_DOCKEFILE_ARM32 ]; then
-                    docker manifest annotate $DOCKERHUB_DESTINATION $DOCKERHUB_DESTINATION-arm32v7 --os linux --arch arm --variant v7
                 fi
                 if [ -f $DOCKERHUB_DOCKEFILE_ARM64 ]; then
                     docker manifest annotate $DOCKERHUB_DESTINATION $DOCKERHUB_DESTINATION-arm64v8 --os linux --arch arm64 --variant v8
@@ -99,12 +76,6 @@ workflows:
               ignore: /.*/
             tags:
               only: /^[^/]+[/][0-9]+(\.[0-9]+)*(-[a-z0-9\.-]+)?/
-      - publish_linuxarm32v7:
-          filters:
-            branches:
-              ignore: /.*/
-            tags:
-              only: /^[^/]+[/][0-9]+(\.[0-9]+)*(-[a-z0-9\.-]+)?/
       - publish_linuxarm64v8:
           filters:
             branches:
@@ -114,7 +85,6 @@ workflows:
       - publish_multiarch:
           requires:
             - publish_linuxamd64
-            - publish_linuxarm32v7
             - publish_linuxarm64v8
           filters:
             branches:
