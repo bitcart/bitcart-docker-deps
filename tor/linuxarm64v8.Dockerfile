@@ -6,13 +6,13 @@ RUN set -ex \
     qemu qemu-user-static qemu-user binfmt-support
 
 WORKDIR /tmp/bin
-RUN wget -qO gosu "https://github.com/tianon/gosu/releases/download/1.13/gosu-arm64" \
-    && echo "578b2c70936cae372f6826585f82e76de5858342dd179605a8cb58d58828a079 gosu" | sha256sum -c -
+RUN wget -qO gosu "https://github.com/tianon/gosu/releases/download/1.16/gosu-arm64" \
+    && echo "23fa49907d5246d2e257de3bf883f57fba47fe1f559f7e732ff16c0f23d2b6a6 gosu" | sha256sum -c -
 
 FROM debian:buster-slim as tor-build
 
-ENV TOR_VERSION=0.4.7.8
-ENV TOR_HASH=9e9a5c67ad2acdd5f0f8be14ed591fed076b1708abf8344066990a0fa66fe195
+ENV TOR_VERSION=0.4.7.13
+ENV TOR_HASH=2079172cce034556f110048e26083ce9bea751f3154b0ad2809751815b11ea9d
 
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates perl autoconf automake build-essential git libtool python python3 wget gnupg dirmngr git \
     libc6-arm64-cross gcc-aarch64-linux-gnu g++-aarch64-linux-gnu

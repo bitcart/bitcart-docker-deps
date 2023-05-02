@@ -1,9 +1,9 @@
 # Thanks to https://hub.docker.com/r/chriswayg/tor-alpine/dockerfile (Christian chriswayg@gmail.com)
 # Dockerfile for Tor Relay Server with obfs4proxy (Multi-Stage build)
 
-FROM alpine:3.13 AS tor-build
-ENV TOR_VERSION=0.4.7.8
-ENV TOR_HASH=9e9a5c67ad2acdd5f0f8be14ed591fed076b1708abf8344066990a0fa66fe195
+FROM alpine:3.17 AS tor-build
+ENV TOR_VERSION=0.4.7.13
+ENV TOR_HASH=2079172cce034556f110048e26083ce9bea751f3154b0ad2809751815b11ea9d
 # Install prerequisites
 RUN apk --no-cache add --update \
     build-base \
@@ -38,12 +38,12 @@ RUN apk --no-cache add --update \
 # /usr/local/etc/tor/torrc.sample
 
 WORKDIR /tmp/bin
-RUN wget -qO gosu "https://github.com/tianon/gosu/releases/download/1.13/gosu-amd64" \
-    && echo "6f333f520d31e212634c0777213a5d4f8f26bba1ab4b0edbbdf3c8bff8896ecf  gosu" | sha256sum -c -
+RUN wget -qO gosu "https://github.com/tianon/gosu/releases/download/1.16/gosu-amd64" \
+    && echo "3a4e1fc7430f9e7dd7b0cbbe0bfde26bf4a250702e84cf48a1eb2b631c64cf13  gosu" | sha256sum -c -
 
-FROM alpine:3.13
+FROM alpine:3.17
 
-ENV TOR_VERSION=0.4.7.8
+ENV TOR_VERSION=0.4.7.13
 
 # Installing dependencies of Tor
 RUN apk --no-cache add --update \
