@@ -55,18 +55,21 @@ workflows:
   publish:
     jobs:
       - publish_linuxamd64:
+          context: global
           filters:
             branches:
               ignore: /.*/
             tags:
               only: /^[^/]+[/][0-9]+(\.[0-9]+)*(-[a-z0-9\.-]+)?/
       - publish_linuxarm64v8:
+          context: global
           filters:
             branches:
               ignore: /.*/
             tags:
               only: /^[^/]+[/][0-9]+(\.[0-9]+)*(-[a-z0-9\.-]+)?/
       - publish_multiarch:
+          context: global
           requires:
             - publish_linuxamd64
             - publish_linuxarm64v8
