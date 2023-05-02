@@ -46,25 +46,9 @@ jobs:
       - run:
           command: |
             source ".circleci/parse-tag.sh"
-            IMAGES=""
-            if [ -f $DOCKERHUB_DOCKEFILE_AMD64 ]; then
-                IMAGES="$IMAGES $DOCKERHUB_DESTINATION-amd64"
-            fi
-            if [ -f $DOCKERHUB_DOCKEFILE_ARM64 ]; then
-                IMAGES="$IMAGES $DOCKERHUB_DESTINATION-arm64v8"
-            fi
-            if [ -z "$IMAGES" ]; then
-                echo "Skipping $DOCKERHUB_DESTINATION as there were no supported platforms to build for"
-            else
-                docker manifest create --amend $DOCKERHUB_DESTINATION $IMAGES 
-                if [ -f $DOCKERHUB_DOCKEFILE_AMD64 ]; then
-                    docker manifest annotate $DOCKERHUB_DESTINATION $DOCKERHUB_DESTINATION-amd64 --os linux --arch amd64         
-                fi
-                if [ -f $DOCKERHUB_DOCKEFILE_ARM64 ]; then
-                    docker manifest annotate $DOCKERHUB_DESTINATION $DOCKERHUB_DESTINATION-arm64v8 --os linux --arch arm64 --variant v8
-                fi
-                docker manifest push $DOCKERHUB_DESTINATION -p
-            fi
+            publish_manifest ""
+            publish_manifest "ghcr.io/"
+            publish_manifest "harbor.nirvati.org/"
 
 workflows:
   version: 2

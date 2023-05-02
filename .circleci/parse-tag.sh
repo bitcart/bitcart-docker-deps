@@ -23,3 +23,25 @@ echo "DOCKERHUB_REPO=$DOCKERHUB_REPO"
 echo "DOCKERHUB_DESTINATION=$DOCKERHUB_DESTINATION"
 echo "DOCKERHUB_DOCKEFILE_AMD64=$DOCKERHUB_DOCKEFILE_AMD64"
 echo "DOCKERHUB_DOCKEFILE_ARM64=$DOCKERHUB_DOCKEFILE_ARM64"
+
+publish_manifest() {
+    IMAGES=""
+    if [ -f $DOCKERHUB_DOCKEFILE_AMD64 ]; then
+        IMAGES="$IMAGES $1$DOCKERHUB_DESTINATION-amd64"
+    fi
+    if [ -f $DOCKERHUB_DOCKEFILE_ARM64 ]; then
+        IMAGES="$IMAGES $1$DOCKERHUB_DESTINATION-arm64v8"
+    fi
+    if [ -z "$IMAGES" ]; then
+        echo "Skipping $1$DOCKERHUB_DESTINATION as there were no supported platforms to build for"
+    else
+        docker manifest create --amend $1$DOCKERHUB_DESTINATION $IMAGES
+        if [ -f $DOCKERHUB_DOCKEFILE_AMD64 ]; then
+            docker manifest annotate $1$DOCKERHUB_DESTINATION $1$DOCKERHUB_DESTINATION-amd64 --os linux --arch amd64
+        fi
+        if [ -f $DOCKERHUB_DOCKEFILE_ARM64 ]; then
+            docker manifest annotate $1$DOCKERHUB_DESTINATION $1$DOCKERHUB_DESTINATION-arm64v8 --os linux --arch arm64 --variant v8
+        fi
+        docker manifest push $1$DOCKERHUB_DESTINATION -p
+    fi
+}
