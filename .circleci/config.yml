@@ -9,7 +9,7 @@ jobs:
     executor: bitcartcc/build-ubuntu
     steps:
       - checkout
-      - bitcartcc/login-to-dockerhub
+      - bitcartcc/login-to-registries
       - run:
           command: |
             source ".circleci/parse-tag.sh"
@@ -25,7 +25,7 @@ jobs:
     executor: bitcartcc/build-ubuntu
     steps:
       - checkout
-      - bitcartcc/login-to-dockerhub
+      - bitcartcc/login-to-registries
       - run:
           command: |
             source ".circleci/parse-tag.sh"
@@ -42,7 +42,7 @@ jobs:
     executor: bitcartcc/build-ubuntu
     steps:
       - checkout
-      - bitcartcc/login-to-dockerhub
+      - bitcartcc/login-to-registries
       - run:
           command: |
             source ".circleci/parse-tag.sh"
