@@ -1,15 +1,15 @@
 version: 2.1
 
 orbs:
-  bitcartcc: bitcartcc/bitcartcc-shared@1
+  bitcart: bitcart/bitcart-shared@2
 
 jobs:
   # publish jobs require $DOCKER_USER, $DOCKER_PASS defined
   publish_linuxamd64:
-    executor: bitcartcc/build-ubuntu
+    executor: bitcart/build-ubuntu
     steps:
       - checkout
-      - bitcartcc/login-to-registries
+      - bitcart/login-to-registries
       - run:
           command: |
             source ".circleci/parse-tag.sh"
@@ -22,10 +22,10 @@ jobs:
             fi
 
   publish_linuxarm64v8:
-    executor: bitcartcc/build-ubuntu
+    executor: bitcart/build-ubuntu
     steps:
       - checkout
-      - bitcartcc/login-to-registries
+      - bitcart/login-to-registries
       - run:
           command: |
             source ".circleci/parse-tag.sh"
@@ -39,10 +39,10 @@ jobs:
             fi
 
   publish_multiarch:
-    executor: bitcartcc/build-ubuntu
+    executor: bitcart/build-ubuntu
     steps:
       - checkout
-      - bitcartcc/login-to-registries
+      - bitcart/login-to-registries
       - run:
           command: |
             source ".circleci/parse-tag.sh"
