@@ -77,7 +77,7 @@ COPY --from=tor-build /usr/local/ /usr/local/
 
 ENV TOR_DATA=/home/tor/.tor
 
-RUN chmod +x /usr/local/bin/gosu && groupadd -r tor && useradd -r -m -g tor tor && mkdir -p ${TOR_DATA} && chown -R tor:tor "$TOR_DATA" \
+RUN chmod +x /usr/local/bin/gosu && groupadd -g 19001 tor && useradd -u 19001 -m -g tor tor && mkdir -p ${TOR_DATA} && chown -R tor:tor "$TOR_DATA" \
   && cp -r /usr/local/lib64/* /usr/local/lib/ && ldconfig
 
 VOLUME /home/tor/.tor

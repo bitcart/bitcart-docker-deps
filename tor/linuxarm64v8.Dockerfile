@@ -89,7 +89,7 @@ COPY --from=tor-build /usr/aarch64-linux-gnu/bin/tor* /usr/bin/
 COPY --from=tor-build ${QEMU_LD_PREFIX}/share/tor/ ${QEMU_LD_PREFIX}/share/tor/
 
 ENV TOR_DATA=/home/tor/.tor
-RUN chmod +x /usr/local/bin/gosu && groupadd -r tor && useradd -r -m -g tor tor && mkdir -p ${TOR_DATA} && chown -R tor:tor "$TOR_DATA"
+RUN chmod +x /usr/local/bin/gosu && groupadd -g 19001 tor && useradd -u 19001 -m -g tor tor && mkdir -p ${TOR_DATA} && chown -R tor:tor "$TOR_DATA"
 
 VOLUME /home/tor/.tor
 
