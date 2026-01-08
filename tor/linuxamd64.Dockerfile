@@ -75,7 +75,7 @@ ENV TOR_VERSION=0.4.8.10
 COPY --from=tor-build "/tmp/bin" /usr/local/bin
 COPY --from=tor-build /usr/local/ /usr/local/
 
-ENV TOR_DATA /home/tor/.tor
+ENV TOR_DATA=/home/tor/.tor
 
 RUN chmod +x /usr/local/bin/gosu && groupadd -r tor && useradd -r -m -g tor tor && mkdir -p ${TOR_DATA} && chown -R tor:tor "$TOR_DATA" \
   && cp -r /usr/local/lib64/* /usr/local/lib/ && ldconfig

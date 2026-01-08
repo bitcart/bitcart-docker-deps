@@ -1,4 +1,5 @@
-FROM debian:bookworm-slim as download
+# check=skip=FromPlatformFlagConstDisallowed
+FROM debian:bookworm-slim AS download
 
 RUN set -ex \
 	&& apt-get update \
@@ -9,7 +10,7 @@ WORKDIR /tmp/bin
 RUN wget -qO gosu "https://github.com/tianon/gosu/releases/download/1.19/gosu-arm64" \
 	  && echo "3a8ef022d82c0bc4a98bcb144e77da714c25fcfa64dccc57f6aba7ae47ff1a44 gosu" | sha256sum -c -
 
-FROM debian:bookworm-slim as tor-build
+FROM debian:bookworm-slim AS tor-build
 
 ENV TOR_VERSION=0.4.8.10
 ENV TOR_HASH=e628b4fab70edb4727715b23cf2931375a9f7685ac08f2c59ea498a178463a86
@@ -79,7 +80,7 @@ RUN wget -q https://dist.torproject.org/tor-${TOR_VERSION}.tar.gz \
 && make install && cd .. && rm $TAR_NAME && rm -rf $FOLDER_NAME \
 && ${STRIP} /usr/aarch64-linux-gnu/bin/tor-* && ${STRIP} /usr/aarch64-linux-gnu/bin/tor
 
-FROM arm64v8/debian:bookworm-slim
+FROM --platform=linux/arm64 arm64v8/debian:bookworm-slim
 ENV target_host=aarch64-linux-gnu
 ENV QEMU_LD_PREFIX=/usr/${target_host}
 COPY --from=download /usr/bin/qemu-aarch64-static /usr/bin/qemu-aarch64-static
@@ -87,7 +88,7 @@ COPY --from=download "/tmp/bin" /usr/local/bin
 COPY --from=tor-build /usr/aarch64-linux-gnu/bin/tor* /usr/bin/
 COPY --from=tor-build ${QEMU_LD_PREFIX}/share/tor/ ${QEMU_LD_PREFIX}/share/tor/
 
-ENV TOR_DATA /home/tor/.tor
+ENV TOR_DATA=/home/tor/.tor
 RUN chmod +x /usr/local/bin/gosu && groupadd -r tor && useradd -r -m -g tor tor && mkdir -p ${TOR_DATA} && chown -R tor:tor "$TOR_DATA"
 
 VOLUME /home/tor/.tor
