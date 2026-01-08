@@ -5,6 +5,22 @@ orbs:
 
 jobs:
   # publish jobs require $DOCKER_USER, $DOCKER_PASS defined
+  publish_buildx:
+    executor: bitcart/build-ubuntu
+    steps:
+      - checkout
+      - bitcart/login-to-registries
+      - run:
+          command: |
+            source ".circleci/parse-tag.sh"
+            DOCKERHUB_DOCKEFILE="$DOCKERHUB_DOCKEFILE_BUILDX"
+            DOCKERHUB_DESTINATION="$DOCKERHUB_REPO:$LATEST_TAG"
+            if [ -f $DOCKERHUB_DOCKEFILE ]; then
+                source ".circleci/push-image-buildx.sh"
+            else
+                echo "Skipping buildx because $DOCKERHUB_DOCKEFILE_BUILDX is not found"
+            fi
+
   publish_linuxamd64:
     executor: bitcart/build-ubuntu
     steps:
@@ -48,12 +64,18 @@ jobs:
             source ".circleci/parse-tag.sh"
             publish_manifest ""
             publish_manifest "ghcr.io/"
-            publish_manifest "harbor.nirvati.org/"
 
 workflows:
   version: 2
   publish:
     jobs:
+      - publish_buildx:
+          context: global
+          filters:
+            branches:
+              ignore: /.*/
+            tags:
+              only: /^[^/]+[/][0-9]+(\.[0-9]+)*(-[a-z0-9\.-]+)?/
       - publish_linuxamd64:
           context: global
           filters:
