@@ -26,7 +26,7 @@ RUN wget -q https://github.com/openssl/openssl/releases/download/openssl-3.0.12/
 && echo "f93c9e8edde5e9166119de31755fc87b4aa34863662f67ddfcba14d0b6b69b61 $TAR_NAME" | sha256sum -c - \
 && tar xvf $TAR_NAME \
 && cd $FOLDER_NAME \
-&& ./Configure no-dso no-zlib no-asm \
+&& ./Configure no-dso no-zlib no-asm enable-ec_nistp_64_gcc_128 \
 && make \
 && make install && cd .. && rm $TAR_NAME && rm -rf $FOLDER_NAME
 
