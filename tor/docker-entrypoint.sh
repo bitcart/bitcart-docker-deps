@@ -8,8 +8,8 @@ chown -R tor "$TOR_DATA"
 chmod 700 "$TOR_DATA"
 
 mkdir -p "/var/lib/tor/hidden_services"
-chown -R tor /var/lib/tor/hidden_services
-chmod 700 /var/lib/tor/hidden_services
+chown -R tor:tor /var/lib/tor/hidden_services
+chmod 750 /var/lib/tor/hidden_services
 
 cat <<-EOF >"$TOR_CONFIG"
 ControlPort 0.0.0.0:9051
