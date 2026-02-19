@@ -44,6 +44,7 @@ jobs:
       packages: write
       id-token: write
       attestations: write
+      artifact-metadata: write
 
     steps:
       - uses: actions/checkout@v6
@@ -73,6 +74,8 @@ jobs:
           tags: |
             ${{ needs.parse_tag.outputs.repo }}:${{ needs.parse_tag.outputs.version }}
             ghcr.io/${{ needs.parse_tag.outputs.repo }}:${{ needs.parse_tag.outputs.version }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       - name: Sign images with cosign
         env:
@@ -83,19 +86,16 @@ jobs:
           cosign sign --yes "${REPO}@${DIGEST}"
           cosign sign --yes "ghcr.io/${REPO}@${DIGEST}"
 
-      - name: Generate subject checksums
-        env:
-          DIGEST: ${{ steps.build.outputs.digest }}
-          REPO: ${{ needs.parse_tag.outputs.repo }}
-          VERSION: ${{ needs.parse_tag.outputs.version }}
-        run: |
-          HASH="${DIGEST#sha256:}"
-          printf '%s  %s:%s\n' "$HASH" "$REPO" "$VERSION" >  digests.txt
-          printf '%s  ghcr.io/%s:%s\n'         "$HASH" "$REPO" "$VERSION" >> digests.txt
+      - uses: actions/attest-build-provenance@v3
+        with:
+          subject-name: index.docker.io/${{ needs.parse_tag.outputs.repo }}
+          subject-digest: ${{ steps.build.outputs.digest }}
+          push-to-registry: true
 
       - uses: actions/attest-build-provenance@v3
         with:
-          subject-checksums: ./digests.txt
+          subject-name: ghcr.io/${{ needs.parse_tag.outputs.repo }}
+          subject-digest: ${{ steps.build.outputs.digest }}
           push-to-registry: true
 
   publish_linuxamd64:
@@ -107,6 +107,7 @@ jobs:
       packages: write
       id-token: write
       attestations: write
+      artifact-metadata: write
 
     steps:
       - uses: actions/checkout@v6
@@ -134,6 +135,8 @@ jobs:
           tags: |
             ${{ needs.parse_tag.outputs.repo }}:${{ needs.parse_tag.outputs.version }}-amd64
             ghcr.io/${{ needs.parse_tag.outputs.repo }}:${{ needs.parse_tag.outputs.version }}-amd64
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       - name: Sign images with cosign
         env:
@@ -144,19 +147,16 @@ jobs:
           cosign sign --yes "${REPO}@${DIGEST}"
           cosign sign --yes "ghcr.io/${REPO}@${DIGEST}"
 
-      - name: Generate subject checksums
-        env:
-          DIGEST: ${{ steps.build.outputs.digest }}
-          REPO: ${{ needs.parse_tag.outputs.repo }}
-          VERSION: ${{ needs.parse_tag.outputs.version }}
-        run: |
-          HASH="${DIGEST#sha256:}"
-          printf '%s  %s:%s-amd64\n' "$HASH" "$REPO" "$VERSION" >  digests.txt
-          printf '%s  ghcr.io/%s:%s-amd64\n'         "$HASH" "$REPO" "$VERSION" >> digests.txt
+      - uses: actions/attest-build-provenance@v3
+        with:
+          subject-name: index.docker.io/${{ needs.parse_tag.outputs.repo }}
+          subject-digest: ${{ steps.build.outputs.digest }}
+          push-to-registry: true
 
       - uses: actions/attest-build-provenance@v3
         with:
-          subject-checksums: ./digests.txt
+          subject-name: ghcr.io/${{ needs.parse_tag.outputs.repo }}
+          subject-digest: ${{ steps.build.outputs.digest }}
           push-to-registry: true
 
   publish_linuxarm64v8:
@@ -168,6 +168,7 @@ jobs:
       packages: write
       id-token: write
       attestations: write
+      artifact-metadata: write
 
     steps:
       - uses: actions/checkout@v6
@@ -197,6 +198,8 @@ jobs:
           tags: |
             ${{ needs.parse_tag.outputs.repo }}:${{ needs.parse_tag.outputs.version }}-arm64v8
             ghcr.io/${{ needs.parse_tag.outputs.repo }}:${{ needs.parse_tag.outputs.version }}-arm64v8
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       - name: Sign images with cosign
         env:
@@ -207,19 +210,16 @@ jobs:
           cosign sign --yes "${REPO}@${DIGEST}"
           cosign sign --yes "ghcr.io/${REPO}@${DIGEST}"
 
-      - name: Generate subject checksums
-        env:
-          DIGEST: ${{ steps.build.outputs.digest }}
-          REPO: ${{ needs.parse_tag.outputs.repo }}
-          VERSION: ${{ needs.parse_tag.outputs.version }}
-        run: |
-          HASH="${DIGEST#sha256:}"
-          printf '%s  %s:%s-arm64v8\n' "$HASH" "$REPO" "$VERSION" >  digests.txt
-          printf '%s  ghcr.io/%s:%s-arm64v8\n'         "$HASH" "$REPO" "$VERSION" >> digests.txt
+      - uses: actions/attest-build-provenance@v3
+        with:
+          subject-name: index.docker.io/${{ needs.parse_tag.outputs.repo }}
+          subject-digest: ${{ steps.build.outputs.digest }}
+          push-to-registry: true
 
       - uses: actions/attest-build-provenance@v3
         with:
-          subject-checksums: ./digests.txt
+          subject-name: ghcr.io/${{ needs.parse_tag.outputs.repo }}
+          subject-digest: ${{ steps.build.outputs.digest }}
           push-to-registry: true
 
   publish_multiarch:
