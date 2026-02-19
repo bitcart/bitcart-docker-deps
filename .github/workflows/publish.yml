@@ -53,7 +53,7 @@ jobs:
 
       - uses: bitcart/bitcart-actions/actions/login-to-registries@master
         with:
-          dockerhub-user: ${{ github.actor }}
+          dockerhub-user: ${{ vars.DOCKERHUB_USER }}
           dockerhub-token: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - uses: docker/setup-qemu-action@v3
@@ -74,7 +74,7 @@ jobs:
       - uses: docker/build-push-action@v6
         id: build
         with:
-          context: ${{ needs.parse_tag.outputs.node }}
+          context: ${{ needs.parse_tag.outputs.node }} # zizmor: ignore[template-injection]
           file: ${{ needs.parse_tag.outputs.node }}/Dockerfile
           platforms: linux/amd64,linux/arm64
           push: true
@@ -125,7 +125,7 @@ jobs:
 
       - uses: bitcart/bitcart-actions/actions/login-to-registries@master
         with:
-          dockerhub-user: ${{ github.actor }}
+          dockerhub-user: ${{ vars.DOCKERHUB_USER }}
           dockerhub-token: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - uses: docker/setup-buildx-action@v3
@@ -144,7 +144,7 @@ jobs:
       - uses: docker/build-push-action@v6
         id: build
         with:
-          context: ${{ needs.parse_tag.outputs.node }}
+          context: ${{ needs.parse_tag.outputs.node }} # zizmor: ignore[template-injection]
           file: ${{ needs.parse_tag.outputs.node }}/linuxamd64.Dockerfile
           platforms: linux/amd64
           push: true
@@ -195,7 +195,7 @@ jobs:
 
       - uses: bitcart/bitcart-actions/actions/login-to-registries@master
         with:
-          dockerhub-user: ${{ github.actor }}
+          dockerhub-user: ${{ vars.DOCKERHUB_USER }}
           dockerhub-token: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - uses: docker/setup-qemu-action@v3
@@ -216,7 +216,7 @@ jobs:
       - uses: docker/build-push-action@v6
         id: build
         with:
-          context: ${{ needs.parse_tag.outputs.node }}
+          context: ${{ needs.parse_tag.outputs.node }} # zizmor: ignore[template-injection]
           file: ${{ needs.parse_tag.outputs.node }}/linuxarm64v8.Dockerfile
           platforms: linux/arm64
           push: true
@@ -271,7 +271,7 @@ jobs:
     steps:
       - uses: bitcart/bitcart-actions/actions/login-to-registries@master
         with:
-          dockerhub-user: ${{ github.actor }}
+          dockerhub-user: ${{ vars.DOCKERHUB_USER }}
           dockerhub-token: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - uses: docker/setup-buildx-action@v3
