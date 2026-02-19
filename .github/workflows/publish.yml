@@ -72,15 +72,19 @@ jobs:
             ${{ needs.parse_tag.outputs.repo }}:${{ needs.parse_tag.outputs.version }}
             ghcr.io/${{ needs.parse_tag.outputs.repo }}:${{ needs.parse_tag.outputs.version }}
 
-      - uses: actions/attest-build-provenance@v3
-        with:
-          subject-name: index.docker.io/${{ needs.parse_tag.outputs.repo }}
-          subject-digest: ${{ steps.build.outputs.digest }}
+      - name: Generate subject checksums
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+          REPO: ${{ needs.parse_tag.outputs.repo }}
+          VERSION: ${{ needs.parse_tag.outputs.version }}
+        run: |
+          HASH="${DIGEST#sha256:}"
+          printf '%s  %s:%s\n' "$HASH" "$REPO" "$VERSION" >  digests.txt
+          printf '%s  ghcr.io/%s:%s\n'         "$HASH" "$REPO" "$VERSION" >> digests.txt
 
       - uses: actions/attest-build-provenance@v3
         with:
-          subject-name: ghcr.io/${{ needs.parse_tag.outputs.repo }}
-          subject-digest: ${{ steps.build.outputs.digest }}
+          subject-checksums: ./digests.txt
 
   publish_linuxamd64:
     needs: [parse_tag]
@@ -117,15 +121,19 @@ jobs:
             ${{ needs.parse_tag.outputs.repo }}:${{ needs.parse_tag.outputs.version }}-amd64
             ghcr.io/${{ needs.parse_tag.outputs.repo }}:${{ needs.parse_tag.outputs.version }}-amd64
 
-      - uses: actions/attest-build-provenance@v3
-        with:
-          subject-name: index.docker.io/${{ needs.parse_tag.outputs.repo }}
-          subject-digest: ${{ steps.build.outputs.digest }}
+      - name: Generate subject checksums
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+          REPO: ${{ needs.parse_tag.outputs.repo }}
+          VERSION: ${{ needs.parse_tag.outputs.version }}
+        run: |
+          HASH="${DIGEST#sha256:}"
+          printf '%s  %s:%s-amd64\n' "$HASH" "$REPO" "$VERSION" >  digests.txt
+          printf '%s  ghcr.io/%s:%s-amd64\n'         "$HASH" "$REPO" "$VERSION" >> digests.txt
 
       - uses: actions/attest-build-provenance@v3
         with:
-          subject-name: ghcr.io/${{ needs.parse_tag.outputs.repo }}
-          subject-digest: ${{ steps.build.outputs.digest }}
+          subject-checksums: ./digests.txt
 
   publish_linuxarm64v8:
     needs: [parse_tag]
@@ -164,15 +172,19 @@ jobs:
             ${{ needs.parse_tag.outputs.repo }}:${{ needs.parse_tag.outputs.version }}-arm64v8
             ghcr.io/${{ needs.parse_tag.outputs.repo }}:${{ needs.parse_tag.outputs.version }}-arm64v8
 
-      - uses: actions/attest-build-provenance@v3
-        with:
-          subject-name: index.docker.io/${{ needs.parse_tag.outputs.repo }}
-          subject-digest: ${{ steps.build.outputs.digest }}
+      - name: Generate subject checksums
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+          REPO: ${{ needs.parse_tag.outputs.repo }}
+          VERSION: ${{ needs.parse_tag.outputs.version }}
+        run: |
+          HASH="${DIGEST#sha256:}"
+          printf '%s  %s:%s-arm64v8\n' "$HASH" "$REPO" "$VERSION" >  digests.txt
+          printf '%s  ghcr.io/%s:%s-arm64v8\n'         "$HASH" "$REPO" "$VERSION" >> digests.txt
 
       - uses: actions/attest-build-provenance@v3
         with:
-          subject-name: ghcr.io/${{ needs.parse_tag.outputs.repo }}
-          subject-digest: ${{ steps.build.outputs.digest }}
+          subject-checksums: ./digests.txt
 
   publish_multiarch:
     runs-on: ubuntu-latest
