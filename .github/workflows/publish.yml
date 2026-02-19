@@ -7,8 +7,6 @@ on:
 
 permissions:
   contents: read
-  packages: write
-  id-token: write
 
 jobs:
   parse_tag:
@@ -17,8 +15,15 @@ jobs:
       node: ${{ steps.meta.outputs.node }}
       version: ${{ steps.meta.outputs.version }}
       repo: ${{ steps.meta.outputs.repo }}
+      has-buildx: ${{ steps.meta.outputs.has-buildx }}
+      has-amd64: ${{ steps.meta.outputs.has-amd64 }}
+      has-arm64: ${{ steps.meta.outputs.has-arm64 }}
     steps:
-      - name: Parse tag
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Parse tag and check Dockerfiles
         id: meta
         run: |
           NODE="${GITHUB_REF_NAME%%/*}"
@@ -26,10 +31,18 @@ jobs:
           echo "node=${NODE}" >> "$GITHUB_OUTPUT"
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
           echo "repo=bitcart/${NODE,,}" >> "$GITHUB_OUTPUT"
+          [ -f "${NODE}/Dockerfile" ]              && echo "has-buildx=true" >> "$GITHUB_OUTPUT" || echo "has-buildx=false" >> "$GITHUB_OUTPUT"
+          [ -f "${NODE}/linuxamd64.Dockerfile" ]   && echo "has-amd64=true"  >> "$GITHUB_OUTPUT" || echo "has-amd64=false"  >> "$GITHUB_OUTPUT"
+          [ -f "${NODE}/linuxarm64v8.Dockerfile" ] && echo "has-arm64=true"  >> "$GITHUB_OUTPUT" || echo "has-arm64=false"  >> "$GITHUB_OUTPUT"
 
   publish_buildx:
     needs: [parse_tag]
+    if: needs.parse_tag.outputs.has-buildx == 'true'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
 
     steps:
       - uses: actions/checkout@v6
@@ -46,7 +59,6 @@ jobs:
       - uses: docker/setup-buildx-action@v3
 
       - uses: docker/build-push-action@v6
-        if: hashFiles(format('{0}/Dockerfile', needs.parse_tag.outputs.node)) != ''
         with:
           context: ${{ needs.parse_tag.outputs.node }}
           file: ${{ needs.parse_tag.outputs.node }}/Dockerfile
@@ -60,7 +72,12 @@ jobs:
 
   publish_linuxamd64:
     needs: [parse_tag]
+    if: needs.parse_tag.outputs.has-amd64 == 'true'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
 
     steps:
       - uses: actions/checkout@v6
@@ -75,7 +92,6 @@ jobs:
       - uses: docker/setup-buildx-action@v3
 
       - uses: docker/build-push-action@v6
-        if: hashFiles(format('{0}/linuxamd64.Dockerfile', needs.parse_tag.outputs.node)) != ''
         with:
           context: ${{ needs.parse_tag.outputs.node }}
           file: ${{ needs.parse_tag.outputs.node }}/linuxamd64.Dockerfile
@@ -89,7 +105,12 @@ jobs:
 
   publish_linuxarm64v8:
     needs: [parse_tag]
+    if: needs.parse_tag.outputs.has-arm64 == 'true'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
 
     steps:
       - uses: actions/checkout@v6
@@ -106,7 +127,6 @@ jobs:
       - uses: docker/setup-buildx-action@v3
 
       - uses: docker/build-push-action@v6
-        if: hashFiles(format('{0}/linuxarm64v8.Dockerfile', needs.parse_tag.outputs.node)) != ''
         with:
           context: ${{ needs.parse_tag.outputs.node }}
           file: ${{ needs.parse_tag.outputs.node }}/linuxarm64v8.Dockerfile
@@ -121,16 +141,23 @@ jobs:
   publish_multiarch:
     runs-on: ubuntu-latest
     needs: [parse_tag, publish_linuxamd64, publish_linuxarm64v8]
+    if: >-
+      always() &&
+      needs.parse_tag.result == 'success' &&
+      (needs.publish_linuxamd64.result == 'success' || needs.publish_linuxamd64.result == 'skipped') &&
+      (needs.publish_linuxarm64v8.result == 'success' || needs.publish_linuxarm64v8.result == 'skipped') &&
+      (needs.parse_tag.outputs.has-amd64 == 'true' || needs.parse_tag.outputs.has-arm64 == 'true')
+    permissions:
+      contents: read
+      packages: write
     env:
       NODE: ${{ needs.parse_tag.outputs.node }}
       VERSION: ${{ needs.parse_tag.outputs.version }}
       REPO: ${{ needs.parse_tag.outputs.repo }}
+      HAS_AMD64: ${{ needs.parse_tag.outputs.has-amd64 }}
+      HAS_ARM64: ${{ needs.parse_tag.outputs.has-arm64 }}
 
     steps:
-      - uses: actions/checkout@v6
-        with:
-          persist-credentials: false
-
       - uses: bitcart/bitcart-actions/actions/login-to-registries@master
         with:
           dockerhub-user: ${{ secrets.DOCKERHUB_USER }}
@@ -142,11 +169,7 @@ jobs:
         run: |
           for PREFIX in "" "ghcr.io/"; do
             IMAGES=""
-            [ -f "${NODE}/linuxamd64.Dockerfile" ]   && IMAGES="$IMAGES ${PREFIX}${REPO}:${VERSION}-amd64"
-            [ -f "${NODE}/linuxarm64v8.Dockerfile" ] && IMAGES="$IMAGES ${PREFIX}${REPO}:${VERSION}-arm64v8"
-            if [ -n "$IMAGES" ]; then
-              docker buildx imagetools create -t "${PREFIX}${REPO}:${VERSION}" $IMAGES
-            else
-              echo "Skipping ${PREFIX}${REPO}:${VERSION} — no supported platform images found"
-            fi
+            [ "$HAS_AMD64" = "true" ] && IMAGES="$IMAGES ${PREFIX}${REPO}:${VERSION}-amd64"
+            [ "$HAS_ARM64" = "true" ] && IMAGES="$IMAGES ${PREFIX}${REPO}:${VERSION}-arm64v8"
+            docker buildx imagetools create -t "${PREFIX}${REPO}:${VERSION}" $IMAGES
           done
