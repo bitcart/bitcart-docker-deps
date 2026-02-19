@@ -1,0 +1,152 @@
+name: Publish Docker Images
+
+on:
+  push:
+    tags:
+      - "*/*"
+
+permissions:
+  contents: read
+  packages: write
+  id-token: write
+
+jobs:
+  parse_tag:
+    runs-on: ubuntu-latest
+    outputs:
+      node: ${{ steps.meta.outputs.node }}
+      version: ${{ steps.meta.outputs.version }}
+      repo: ${{ steps.meta.outputs.repo }}
+    steps:
+      - name: Parse tag
+        id: meta
+        run: |
+          NODE="${GITHUB_REF_NAME%%/*}"
+          VERSION="${GITHUB_REF_NAME#*/}"
+          echo "node=${NODE}" >> "$GITHUB_OUTPUT"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "repo=bitcart/${NODE,,}" >> "$GITHUB_OUTPUT"
+
+  publish_buildx:
+    needs: [parse_tag]
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - uses: bitcart/bitcart-actions/actions/login-to-registries@master
+        with:
+          dockerhub-user: ${{ secrets.DOCKERHUB_USER }}
+          dockerhub-token: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - uses: docker/setup-qemu-action@v3
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/build-push-action@v6
+        if: hashFiles(format('{0}/Dockerfile', needs.parse_tag.outputs.node)) != ''
+        with:
+          context: ${{ needs.parse_tag.outputs.node }}
+          file: ${{ needs.parse_tag.outputs.node }}/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          provenance: mode=max
+          sbom: true
+          tags: |
+            ${{ needs.parse_tag.outputs.repo }}:${{ needs.parse_tag.outputs.version }}
+            ghcr.io/${{ needs.parse_tag.outputs.repo }}:${{ needs.parse_tag.outputs.version }}
+
+  publish_linuxamd64:
+    needs: [parse_tag]
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - uses: bitcart/bitcart-actions/actions/login-to-registries@master
+        with:
+          dockerhub-user: ${{ secrets.DOCKERHUB_USER }}
+          dockerhub-token: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/build-push-action@v6
+        if: hashFiles(format('{0}/linuxamd64.Dockerfile', needs.parse_tag.outputs.node)) != ''
+        with:
+          context: ${{ needs.parse_tag.outputs.node }}
+          file: ${{ needs.parse_tag.outputs.node }}/linuxamd64.Dockerfile
+          platforms: linux/amd64
+          push: true
+          provenance: mode=max
+          sbom: true
+          tags: |
+            ${{ needs.parse_tag.outputs.repo }}:${{ needs.parse_tag.outputs.version }}-amd64
+            ghcr.io/${{ needs.parse_tag.outputs.repo }}:${{ needs.parse_tag.outputs.version }}-amd64
+
+  publish_linuxarm64v8:
+    needs: [parse_tag]
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - uses: bitcart/bitcart-actions/actions/login-to-registries@master
+        with:
+          dockerhub-user: ${{ secrets.DOCKERHUB_USER }}
+          dockerhub-token: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - uses: docker/setup-qemu-action@v3
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/build-push-action@v6
+        if: hashFiles(format('{0}/linuxarm64v8.Dockerfile', needs.parse_tag.outputs.node)) != ''
+        with:
+          context: ${{ needs.parse_tag.outputs.node }}
+          file: ${{ needs.parse_tag.outputs.node }}/linuxarm64v8.Dockerfile
+          platforms: linux/arm64
+          push: true
+          provenance: mode=max
+          sbom: true
+          tags: |
+            ${{ needs.parse_tag.outputs.repo }}:${{ needs.parse_tag.outputs.version }}-arm64v8
+            ghcr.io/${{ needs.parse_tag.outputs.repo }}:${{ needs.parse_tag.outputs.version }}-arm64v8
+
+  publish_multiarch:
+    runs-on: ubuntu-latest
+    needs: [parse_tag, publish_linuxamd64, publish_linuxarm64v8]
+    env:
+      NODE: ${{ needs.parse_tag.outputs.node }}
+      VERSION: ${{ needs.parse_tag.outputs.version }}
+      REPO: ${{ needs.parse_tag.outputs.repo }}
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - uses: bitcart/bitcart-actions/actions/login-to-registries@master
+        with:
+          dockerhub-user: ${{ secrets.DOCKERHUB_USER }}
+          dockerhub-token: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Create and push manifests
+        run: |
+          for PREFIX in "" "ghcr.io/"; do
+            IMAGES=""
+            [ -f "${NODE}/linuxamd64.Dockerfile" ]   && IMAGES="$IMAGES ${PREFIX}${REPO}:${VERSION}-amd64"
+            [ -f "${NODE}/linuxarm64v8.Dockerfile" ] && IMAGES="$IMAGES ${PREFIX}${REPO}:${VERSION}-arm64v8"
+            if [ -n "$IMAGES" ]; then
+              docker buildx imagetools create -t "${PREFIX}${REPO}:${VERSION}" $IMAGES
+            else
+              echo "Skipping ${PREFIX}${REPO}:${VERSION} — no supported platform images found"
+            fi
+          done
