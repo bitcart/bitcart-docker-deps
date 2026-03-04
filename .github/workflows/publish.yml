@@ -15,7 +15,7 @@ jobs:
       node: ${{ steps.meta.outputs.node }}
       version: ${{ steps.meta.outputs.version }}
       repo: ${{ steps.meta.outputs.repo }}
-      has-buildx: ${{ steps.meta.outputs.has-buildx }}
+      matrix: ${{ steps.meta.outputs.matrix }}
       has-amd64: ${{ steps.meta.outputs.has-amd64 }}
       has-arm64: ${{ steps.meta.outputs.has-arm64 }}
     steps:
@@ -23,7 +23,7 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Parse tag and check Dockerfiles
+      - name: Parse tag and generate matrix
         id: meta
         run: |
           NODE="${GITHUB_REF_NAME%%/*}"
@@ -31,238 +31,68 @@ jobs:
           echo "node=${NODE}" >> "$GITHUB_OUTPUT"
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
           echo "repo=bitcart/${NODE,,}" >> "$GITHUB_OUTPUT"
-          [ -f "${NODE}/Dockerfile" ]              && echo "has-buildx=true" >> "$GITHUB_OUTPUT" || echo "has-buildx=false" >> "$GITHUB_OUTPUT"
-          [ -f "${NODE}/linuxamd64.Dockerfile" ]   && echo "has-amd64=true"  >> "$GITHUB_OUTPUT" || echo "has-amd64=false"  >> "$GITHUB_OUTPUT"
-          [ -f "${NODE}/linuxarm64v8.Dockerfile" ] && echo "has-arm64=true"  >> "$GITHUB_OUTPUT" || echo "has-arm64=false"  >> "$GITHUB_OUTPUT"
+          matrix='[]'
+          if [ -f "${NODE}/Dockerfile" ]; then
+            entry=$(jq -n --arg df "${NODE}/Dockerfile" --arg sfx "" --arg plat "linux/amd64,linux/arm64" \
+              '{dockerfile: $df, suffix: $sfx, platforms: $plat}')
+            matrix=$(echo "$matrix" | jq --argjson e "$entry" '. + [$e]')
+          fi
+          if [ -f "${NODE}/linuxamd64.Dockerfile" ]; then
+            entry=$(jq -n --arg df "${NODE}/linuxamd64.Dockerfile" --arg sfx "-amd64" --arg plat "linux/amd64" \
+              '{dockerfile: $df, suffix: $sfx, platforms: $plat}')
+            matrix=$(echo "$matrix" | jq --argjson e "$entry" '. + [$e]')
+            echo "has-amd64=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has-amd64=false" >> "$GITHUB_OUTPUT"
+          fi
+          if [ -f "${NODE}/linuxarm64v8.Dockerfile" ]; then
+            entry=$(jq -n --arg df "${NODE}/linuxarm64v8.Dockerfile" --arg sfx "-arm64v8" --arg plat "linux/arm64" \
+              '{dockerfile: $df, suffix: $sfx, platforms: $plat}')
+            matrix=$(echo "$matrix" | jq --argjson e "$entry" '. + [$e]')
+            echo "has-arm64=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has-arm64=false" >> "$GITHUB_OUTPUT"
+          fi
+          echo "matrix=${matrix}" >> "$GITHUB_OUTPUT"
 
-  publish_buildx:
-    needs: [parse_tag]
-    if: needs.parse_tag.outputs.has-buildx == 'true'
-    runs-on: ubuntu-latest
+  build:
+    needs: parse_tag
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJson(needs.parse_tag.outputs.matrix) }}
+    name: build-${{ needs.parse_tag.outputs.node }}${{ matrix.suffix }}
+    uses: bitcart/bitcart-actions/.github/workflows/build-docker-image.yml@master
     permissions:
       contents: read
       packages: write
       id-token: write
       attestations: write
       artifact-metadata: write
-
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          persist-credentials: false
-
-      - uses: bitcart/bitcart-actions/actions/login-to-registries@master
-        with:
-          dockerhub-user: ${{ vars.DOCKERHUB_USER }}
-          dockerhub-token: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - uses: docker/setup-qemu-action@v3
-
-      - uses: docker/setup-buildx-action@v3
-
-      - uses: sigstore/cosign-installer@v4.0.0
-
-      - uses: docker/metadata-action@v5
-        id: meta
-        with:
-          images: |
-            ${{ needs.parse_tag.outputs.repo }}
-            ghcr.io/${{ needs.parse_tag.outputs.repo }}
-          tags: |
-            type=raw,value=${{ needs.parse_tag.outputs.version }}
-
-      - uses: docker/build-push-action@v6
-        id: build
-        with:
-          context: ${{ needs.parse_tag.outputs.node }} # zizmor: ignore[template-injection]
-          file: ${{ needs.parse_tag.outputs.node }}/Dockerfile
-          platforms: linux/amd64,linux/arm64
-          push: true
-          provenance: mode=max
-          sbom: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          annotations: ${{ steps.meta.outputs.annotations }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - name: Sign images with cosign
-        env:
-          DIGEST: ${{ steps.build.outputs.digest }}
-          REPO: ${{ needs.parse_tag.outputs.repo }}
-          VERSION: ${{ needs.parse_tag.outputs.version }}
-        run: |
-          cosign sign --yes "${REPO}@${DIGEST}"
-          cosign sign --yes "ghcr.io/${REPO}@${DIGEST}"
-
-      - uses: actions/attest-build-provenance@v3
-        with:
-          subject-name: index.docker.io/${{ needs.parse_tag.outputs.repo }}
-          subject-digest: ${{ steps.build.outputs.digest }}
-          push-to-registry: true
-
-      - uses: actions/attest-build-provenance@v3
-        with:
-          subject-name: ghcr.io/${{ needs.parse_tag.outputs.repo }}
-          subject-digest: ${{ steps.build.outputs.digest }}
-          push-to-registry: true
-
-  publish_linuxamd64:
-    needs: [parse_tag]
-    if: needs.parse_tag.outputs.has-amd64 == 'true'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-      id-token: write
-      attestations: write
-      artifact-metadata: write
-
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          persist-credentials: false
-
-      - uses: bitcart/bitcart-actions/actions/login-to-registries@master
-        with:
-          dockerhub-user: ${{ vars.DOCKERHUB_USER }}
-          dockerhub-token: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - uses: docker/setup-buildx-action@v3
-
-      - uses: sigstore/cosign-installer@v4.0.0
-
-      - uses: docker/metadata-action@v5
-        id: meta
-        with:
-          images: |
-            ${{ needs.parse_tag.outputs.repo }}
-            ghcr.io/${{ needs.parse_tag.outputs.repo }}
-          tags: |
-            type=raw,value=${{ needs.parse_tag.outputs.version }}-amd64
-
-      - uses: docker/build-push-action@v6
-        id: build
-        with:
-          context: ${{ needs.parse_tag.outputs.node }} # zizmor: ignore[template-injection]
-          file: ${{ needs.parse_tag.outputs.node }}/linuxamd64.Dockerfile
-          platforms: linux/amd64
-          push: true
-          provenance: mode=max
-          sbom: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          annotations: ${{ steps.meta.outputs.annotations }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - name: Sign images with cosign
-        env:
-          DIGEST: ${{ steps.build.outputs.digest }}
-          REPO: ${{ needs.parse_tag.outputs.repo }}
-          VERSION: ${{ needs.parse_tag.outputs.version }}
-        run: |
-          cosign sign --yes "${REPO}@${DIGEST}"
-          cosign sign --yes "ghcr.io/${REPO}@${DIGEST}"
-
-      - uses: actions/attest-build-provenance@v3
-        with:
-          subject-name: index.docker.io/${{ needs.parse_tag.outputs.repo }}
-          subject-digest: ${{ steps.build.outputs.digest }}
-          push-to-registry: true
-
-      - uses: actions/attest-build-provenance@v3
-        with:
-          subject-name: ghcr.io/${{ needs.parse_tag.outputs.repo }}
-          subject-digest: ${{ steps.build.outputs.digest }}
-          push-to-registry: true
-
-  publish_linuxarm64v8:
-    needs: [parse_tag]
-    if: needs.parse_tag.outputs.has-arm64 == 'true'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-      id-token: write
-      attestations: write
-      artifact-metadata: write
-
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          persist-credentials: false
-
-      - uses: bitcart/bitcart-actions/actions/login-to-registries@master
-        with:
-          dockerhub-user: ${{ vars.DOCKERHUB_USER }}
-          dockerhub-token: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - uses: docker/setup-qemu-action@v3
-
-      - uses: docker/setup-buildx-action@v3
-
-      - uses: sigstore/cosign-installer@v4.0.0
-
-      - uses: docker/metadata-action@v5
-        id: meta
-        with:
-          images: |
-            ${{ needs.parse_tag.outputs.repo }}
-            ghcr.io/${{ needs.parse_tag.outputs.repo }}
-          tags: |
-            type=raw,value=${{ needs.parse_tag.outputs.version }}-arm64v8
-
-      - uses: docker/build-push-action@v6
-        id: build
-        with:
-          context: ${{ needs.parse_tag.outputs.node }} # zizmor: ignore[template-injection]
-          file: ${{ needs.parse_tag.outputs.node }}/linuxarm64v8.Dockerfile
-          platforms: linux/arm64
-          push: true
-          provenance: mode=max
-          sbom: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          annotations: ${{ steps.meta.outputs.annotations }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - name: Sign images with cosign
-        env:
-          DIGEST: ${{ steps.build.outputs.digest }}
-          REPO: ${{ needs.parse_tag.outputs.repo }}
-          VERSION: ${{ needs.parse_tag.outputs.version }}
-        run: |
-          cosign sign --yes "${REPO}@${DIGEST}"
-          cosign sign --yes "ghcr.io/${REPO}@${DIGEST}"
-
-      - uses: actions/attest-build-provenance@v3
-        with:
-          subject-name: index.docker.io/${{ needs.parse_tag.outputs.repo }}
-          subject-digest: ${{ steps.build.outputs.digest }}
-          push-to-registry: true
-
-      - uses: actions/attest-build-provenance@v3
-        with:
-          subject-name: ghcr.io/${{ needs.parse_tag.outputs.repo }}
-          subject-digest: ${{ steps.build.outputs.digest }}
-          push-to-registry: true
+    with:
+      dockerfile: ${{ matrix.dockerfile }}
+      context: ${{ needs.parse_tag.outputs.node }}
+      image-name: ${{ needs.parse_tag.outputs.repo }}
+      prefix: ${{ needs.parse_tag.outputs.node }}${{ matrix.suffix }}
+      platforms: ${{ matrix.platforms }}
+      tags: |
+        type=raw,value=${{ needs.parse_tag.outputs.version }}${{ matrix.suffix }}
+      dockerhub-user: ${{ vars.DOCKERHUB_USER }}
+    secrets:
+      dockerhub-token: ${{ secrets.DOCKERHUB_TOKEN }}
 
   publish_multiarch:
     runs-on: ubuntu-latest
-    needs: [parse_tag, publish_linuxamd64, publish_linuxarm64v8]
+    needs: [parse_tag, build]
     if: >-
       always() &&
       needs.parse_tag.result == 'success' &&
-      (needs.publish_linuxamd64.result == 'success' || needs.publish_linuxamd64.result == 'skipped') &&
-      (needs.publish_linuxarm64v8.result == 'success' || needs.publish_linuxarm64v8.result == 'skipped') &&
+      needs.build.result == 'success' &&
       (needs.parse_tag.outputs.has-amd64 == 'true' || needs.parse_tag.outputs.has-arm64 == 'true')
     permissions:
       contents: read
       packages: write
     env:
-      NODE: ${{ needs.parse_tag.outputs.node }}
       VERSION: ${{ needs.parse_tag.outputs.version }}
       REPO: ${{ needs.parse_tag.outputs.repo }}
       HAS_AMD64: ${{ needs.parse_tag.outputs.has-amd64 }}
