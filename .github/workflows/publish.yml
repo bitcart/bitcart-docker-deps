@@ -33,22 +33,22 @@ jobs:
           echo "repo=bitcart/${NODE,,}" >> "$GITHUB_OUTPUT"
           matrix='[]'
           if [ -f "${NODE}/Dockerfile" ]; then
-            entry=$(jq -n --arg df "${NODE}/Dockerfile" --arg sfx "" --arg plat "linux/amd64,linux/arm64" \
+            entry=$(jq -cn --arg df "${NODE}/Dockerfile" --arg sfx "" --arg plat "linux/amd64,linux/arm64" \
               '{dockerfile: $df, suffix: $sfx, platforms: $plat}')
-            matrix=$(echo "$matrix" | jq --argjson e "$entry" '. + [$e]')
+            matrix=$(echo "$matrix" | jq -c --argjson e "$entry" '. + [$e]')
           fi
           if [ -f "${NODE}/linuxamd64.Dockerfile" ]; then
-            entry=$(jq -n --arg df "${NODE}/linuxamd64.Dockerfile" --arg sfx "-amd64" --arg plat "linux/amd64" \
+            entry=$(jq -cn --arg df "${NODE}/linuxamd64.Dockerfile" --arg sfx "-amd64" --arg plat "linux/amd64" \
               '{dockerfile: $df, suffix: $sfx, platforms: $plat}')
-            matrix=$(echo "$matrix" | jq --argjson e "$entry" '. + [$e]')
+            matrix=$(echo "$matrix" | jq -c --argjson e "$entry" '. + [$e]')
             echo "has-amd64=true" >> "$GITHUB_OUTPUT"
           else
             echo "has-amd64=false" >> "$GITHUB_OUTPUT"
           fi
           if [ -f "${NODE}/linuxarm64v8.Dockerfile" ]; then
-            entry=$(jq -n --arg df "${NODE}/linuxarm64v8.Dockerfile" --arg sfx "-arm64v8" --arg plat "linux/arm64" \
+            entry=$(jq -cn --arg df "${NODE}/linuxarm64v8.Dockerfile" --arg sfx "-arm64v8" --arg plat "linux/arm64" \
               '{dockerfile: $df, suffix: $sfx, platforms: $plat}')
-            matrix=$(echo "$matrix" | jq --argjson e "$entry" '. + [$e]')
+            matrix=$(echo "$matrix" | jq -c --argjson e "$entry" '. + [$e]')
             echo "has-arm64=true" >> "$GITHUB_OUTPUT"
           else
             echo "has-arm64=false" >> "$GITHUB_OUTPUT"
