@@ -74,7 +74,7 @@ jobs:
       context: ${{ needs.parse_tag.outputs.node }}
       image-name: ${{ needs.parse_tag.outputs.repo }}
       prefix: ${{ needs.parse_tag.outputs.node }}${{ matrix.suffix }}
-      platforms: ${{ matrix.platforms }}
+      # platforms: ${{ matrix.platforms }} # TODO: fix
       tags: |
         type=raw,value=${{ needs.parse_tag.outputs.version }}${{ matrix.suffix }}
       dockerhub-user: ${{ vars.DOCKERHUB_USER }}
