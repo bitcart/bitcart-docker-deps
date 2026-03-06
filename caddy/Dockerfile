@@ -8,7 +8,8 @@ RUN --mount=type=cache,target=/go/pkg/mod \
     --with github.com/caddy-dns/cloudflare \
     --with github.com/mholt/caddy-dynamicdns \
     --with github.com/mholt/caddy-l4 \
-    --with github.com/WeidiDeng/caddy-cloudflare-ip
+    --with github.com/WeidiDeng/caddy-cloudflare-ip \
+    --with github.com/caddyserver/transform-encoder
 
 FROM caddy:${CADDY_VERSION}
 
