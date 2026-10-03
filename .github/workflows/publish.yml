@@ -15,53 +15,21 @@ jobs:
       node: ${{ steps.meta.outputs.node }}
       version: ${{ steps.meta.outputs.version }}
       repo: ${{ steps.meta.outputs.repo }}
-      matrix: ${{ steps.meta.outputs.matrix }}
-      has-amd64: ${{ steps.meta.outputs.has-amd64 }}
-      has-arm64: ${{ steps.meta.outputs.has-arm64 }}
     steps:
-      - uses: actions/checkout@v6
-        with:
-          persist-credentials: false
-
-      - name: Parse tag and generate matrix
+      - name: Parse tag
         id: meta
         run: |
           NODE="${GITHUB_REF_NAME%%/*}"
           VERSION="${GITHUB_REF_NAME#*/}"
-          echo "node=${NODE}" >> "$GITHUB_OUTPUT"
-          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
-          echo "repo=bitcart/${NODE,,}" >> "$GITHUB_OUTPUT"
-          matrix='[]'
-          if [ -f "${NODE}/Dockerfile" ]; then
-            entry=$(jq -cn --arg df "${NODE}/Dockerfile" --arg sfx "" --arg plat "linux/amd64,linux/arm64" \
-              '{dockerfile: $df, suffix: $sfx, platforms: $plat}')
-            matrix=$(echo "$matrix" | jq -c --argjson e "$entry" '. + [$e]')
-          fi
-          if [ -f "${NODE}/linuxamd64.Dockerfile" ]; then
-            entry=$(jq -cn --arg df "${NODE}/linuxamd64.Dockerfile" --arg sfx "-amd64" --arg plat "linux/amd64" \
-              '{dockerfile: $df, suffix: $sfx, platforms: $plat}')
-            matrix=$(echo "$matrix" | jq -c --argjson e "$entry" '. + [$e]')
-            echo "has-amd64=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "has-amd64=false" >> "$GITHUB_OUTPUT"
-          fi
-          if [ -f "${NODE}/linuxarm64v8.Dockerfile" ]; then
-            entry=$(jq -cn --arg df "${NODE}/linuxarm64v8.Dockerfile" --arg sfx "-arm64v8" --arg plat "linux/arm64" \
-              '{dockerfile: $df, suffix: $sfx, platforms: $plat}')
-            matrix=$(echo "$matrix" | jq -c --argjson e "$entry" '. + [$e]')
-            echo "has-arm64=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "has-arm64=false" >> "$GITHUB_OUTPUT"
-          fi
-          echo "matrix=${matrix}" >> "$GITHUB_OUTPUT"
+          {
+            echo "node=${NODE}"
+            echo "version=${VERSION}"
+            echo "repo=bitcart/${NODE,,}"
+          } >> "$GITHUB_OUTPUT"
 
   build:
     needs: parse_tag
-    strategy:
-      fail-fast: false
-      matrix:
-        include: ${{ fromJson(needs.parse_tag.outputs.matrix) }}
-    name: build-${{ needs.parse_tag.outputs.node }}${{ matrix.suffix }}
+    name: build-${{ needs.parse_tag.outputs.node }}
     uses: bitcart/bitcart-actions/.github/workflows/build-docker-image.yml@master
     permissions:
       contents: read
@@ -70,47 +38,11 @@ jobs:
       attestations: write
       artifact-metadata: write
     with:
-      dockerfile: ${{ matrix.dockerfile }}
+      dockerfile: ${{ needs.parse_tag.outputs.node }}/Dockerfile
       context: ${{ needs.parse_tag.outputs.node }}
       image-name: ${{ needs.parse_tag.outputs.repo }}
-      prefix: ${{ needs.parse_tag.outputs.node }}${{ matrix.suffix }}
-      # platforms: ${{ matrix.platforms }} # TODO: fix
       tags: |
-        type=raw,value=${{ needs.parse_tag.outputs.version }}${{ matrix.suffix }}
+        type=raw,value=${{ needs.parse_tag.outputs.version }}
       dockerhub-user: ${{ vars.DOCKERHUB_USER }}
     secrets:
       dockerhub-token: ${{ secrets.DOCKERHUB_TOKEN }}
-
-  publish_multiarch:
-    runs-on: ubuntu-latest
-    needs: [parse_tag, build]
-    if: >-
-      always() &&
-      needs.parse_tag.result == 'success' &&
-      needs.build.result == 'success' &&
-      (needs.parse_tag.outputs.has-amd64 == 'true' || needs.parse_tag.outputs.has-arm64 == 'true')
-    permissions:
-      contents: read
-      packages: write
-    env:
-      VERSION: ${{ needs.parse_tag.outputs.version }}
-      REPO: ${{ needs.parse_tag.outputs.repo }}
-      HAS_AMD64: ${{ needs.parse_tag.outputs.has-amd64 }}
-      HAS_ARM64: ${{ needs.parse_tag.outputs.has-arm64 }}
-
-    steps:
-      - uses: bitcart/bitcart-actions/actions/login-to-registries@master
-        with:
-          dockerhub-user: ${{ vars.DOCKERHUB_USER }}
-          dockerhub-token: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - uses: docker/setup-buildx-action@v3
-
-      - name: Create and push manifests
-        run: |
-          for PREFIX in "" "ghcr.io/"; do
-            IMAGES=""
-            [ "$HAS_AMD64" = "true" ] && IMAGES="$IMAGES ${PREFIX}${REPO}:${VERSION}-amd64"
-            [ "$HAS_ARM64" = "true" ] && IMAGES="$IMAGES ${PREFIX}${REPO}:${VERSION}-arm64v8"
-            docker buildx imagetools create -t "${PREFIX}${REPO}:${VERSION}" $IMAGES
-          done
