@@ -10,7 +10,8 @@ RUN --mount=type=cache,target=/go/pkg/mod \
     --with github.com/mholt/caddy-dynamicdns \
     --with github.com/mholt/caddy-l4 \
     --with github.com/WeidiDeng/caddy-cloudflare-ip \
-    --with github.com/caddyserver/transform-encoder
+    --with github.com/caddyserver/transform-encoder \
+    --with github.com/corazawaf/coraza-caddy/v2
 
 FROM caddy:${CADDY_VERSION}
 
