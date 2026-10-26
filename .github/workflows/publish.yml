@@ -44,5 +44,4 @@ jobs:
       tags: |
         type=raw,value=${{ needs.parse_tag.outputs.version }}
       dockerhub-user: ${{ vars.DOCKERHUB_USER }}
-    secrets:
-      dockerhub-token: ${{ secrets.DOCKERHUB_TOKEN }}
+      dockerhub-oidc-connection-id: ${{ vars.DOCKERHUB_OIDC_CONNECTIONID }}
