@@ -1,10 +1,10 @@
-FROM --platform=$BUILDPLATFORM golang:1.26 AS builder
+FROM --platform=$BUILDPLATFORM golang:1.27 AS builder
 
 ARG TARGETARCH
 ENV GO111MODULE=on \
     CGO_ENABLED=0 \
     CONTAINER_BUILD=1 \
-    CLOUDFLARED_VERSION=2026.9.3
+    CLOUDFLARED_VERSION=2026.10.7
 WORKDIR /go/src/github.com/cloudflare/cloudflared/
 
 RUN git clone --branch ${CLOUDFLARED_VERSION} --single-branch --depth 1 https://github.com/cloudflare/cloudflared.git .
