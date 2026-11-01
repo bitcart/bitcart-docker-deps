@@ -1,13 +1,13 @@
 # Thanks to https://hub.docker.com/r/chriswayg/tor-alpine/dockerfile (Christian chriswayg@gmail.com)
 # Dockerfile for Tor Relay Server with obfs4proxy (Multi-Stage build)
 
-ARG VERSION=0.4.9.13
+ARG VERSION=0.4.9.15
 
-FROM debian:bookworm-slim AS tor-build
+FROM debian:trixie-slim AS tor-build
 ARG TARGETARCH
 ARG VERSION
 ENV TOR_VERSION=${VERSION}
-ENV TOR_HASH=5e748d3272cdf44a7d7741173f371c8def3d96eecb77e93c89c50663ce9cc792
+ENV TOR_HASH=1911f5b216a6814ed143a08bbcff1c6dc96d2ca3b505df9a21876080a92963f3
 
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates perl autoconf automake build-essential git libtool python3 wget gnupg dirmngr git pkg-config
 
@@ -68,14 +68,14 @@ RUN TOR_TARBALL_NAME="tor-${TOR_VERSION}.tar.gz" \
 
 WORKDIR /tmp/bin
 RUN case "${TARGETARCH}" in \
-      amd64) GOSU_HASH=52c8749d0142edd234e9d6bd5237dff2d81e71f43537e2f4f66f75dd4b243dd0 ;; \
-      arm64) GOSU_HASH=3a8ef022d82c0bc4a98bcb144e77da714c25fcfa64dccc57f6aba7ae47ff1a44 ;; \
+      amd64) GOSU_HASH=b1892636c281590f34bc63c1118f058cd9de66c4ea463772e3909672d8b302ac ;; \
+      arm64) GOSU_HASH=c216cb762520edb5ab0acb21cb9bc4bcc5f1544d365e8952a21514f04ea233ee ;; \
       *) echo "Unsupported architecture: ${TARGETARCH}"; exit 1 ;; \
     esac \
-    && wget -qO gosu "https://github.com/tianon/gosu/releases/download/1.19/gosu-${TARGETARCH}" \
+    && wget -qO gosu "https://github.com/tianon/gosu/releases/download/1.20/gosu-${TARGETARCH}" \
     && echo "${GOSU_HASH}  gosu" | sha256sum -c -
 
-FROM debian:bookworm-slim
+FROM debian:trixie-slim
 
 ARG VERSION
 ENV TOR_VERSION=${VERSION}
