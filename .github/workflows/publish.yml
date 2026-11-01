@@ -20,6 +20,7 @@ jobs:
       image: ${{ steps.meta.outputs.image }}
       repo: ${{ steps.meta.outputs.repo }}
       tags: ${{ steps.meta.outputs.tags }}
+
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -31,15 +32,9 @@ jobs:
         run: .github/scripts/release-tags.sh "$GITHUB_REF_NAME" >> "$GITHUB_OUTPUT"
 
   build:
-    needs: parse_tag
     name: build-${{ needs.parse_tag.outputs.image }}
     uses: bitcart/bitcart-actions/.github/workflows/build-docker-image.yml@master
-    permissions:
-      contents: read
-      packages: write # publishing to GHCR
-      id-token: write # OIDC for provenance
-      attestations: write # github attestations
-      artifact-metadata: write # artifact storage metadata (recommended by actions/attest)
+    needs: parse_tag
     with:
       dockerfile: ${{ needs.parse_tag.outputs.image }}/Dockerfile
       context: ${{ needs.parse_tag.outputs.image }}
@@ -47,3 +42,10 @@ jobs:
       tags: ${{ needs.parse_tag.outputs.tags }}
       dockerhub-user: ${{ vars.DOCKERHUB_USER }}
       dockerhub-oidc-connection-id: ${{ vars.DOCKERHUB_OIDC_CONNECTIONID }}
+
+    permissions:
+      contents: read
+      packages: write # publishing to GHCR
+      id-token: write # OIDC for provenance
+      attestations: write # github attestations
+      artifact-metadata: write # artifact storage metadata (recommended by actions/attest)
