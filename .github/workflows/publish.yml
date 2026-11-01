@@ -5,43 +5,45 @@ on:
     tags:
       - "*/*"
 
+concurrency:
+  group: ${{ github.workflow_ref }}-${{ github.ref_name }}
+  cancel-in-progress: false
+
 permissions:
   contents: read
 
 jobs:
   parse_tag:
+    name: parse-tag
     runs-on: ubuntu-latest
     outputs:
-      node: ${{ steps.meta.outputs.node }}
-      version: ${{ steps.meta.outputs.version }}
+      image: ${{ steps.meta.outputs.image }}
       repo: ${{ steps.meta.outputs.repo }}
+      tags: ${{ steps.meta.outputs.tags }}
     steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
       - name: Parse tag
         id: meta
-        run: |
-          NODE="${GITHUB_REF_NAME%%/*}"
-          VERSION="${GITHUB_REF_NAME#*/}"
-          {
-            echo "node=${NODE}"
-            echo "version=${VERSION}"
-            echo "repo=bitcart/${NODE,,}"
-          } >> "$GITHUB_OUTPUT"
+        run: .github/scripts/release-tags.sh "$GITHUB_REF_NAME" >> "$GITHUB_OUTPUT"
 
   build:
     needs: parse_tag
-    name: build-${{ needs.parse_tag.outputs.node }}
+    name: build-${{ needs.parse_tag.outputs.image }}
     uses: bitcart/bitcart-actions/.github/workflows/build-docker-image.yml@master
     permissions:
       contents: read
-      packages: write
-      id-token: write
-      attestations: write
-      artifact-metadata: write
+      packages: write # publishing to GHCR
+      id-token: write # OIDC for provenance
+      attestations: write # github attestations
+      artifact-metadata: write # artifact storage metadata (recommended by actions/attest)
     with:
-      dockerfile: ${{ needs.parse_tag.outputs.node }}/Dockerfile
-      context: ${{ needs.parse_tag.outputs.node }}
+      dockerfile: ${{ needs.parse_tag.outputs.image }}/Dockerfile
+      context: ${{ needs.parse_tag.outputs.image }}
       image-name: ${{ needs.parse_tag.outputs.repo }}
-      tags: |
-        type=raw,value=${{ needs.parse_tag.outputs.version }}
+      tags: ${{ needs.parse_tag.outputs.tags }}
       dockerhub-user: ${{ vars.DOCKERHUB_USER }}
       dockerhub-oidc-connection-id: ${{ vars.DOCKERHUB_OIDC_CONNECTIONID }}

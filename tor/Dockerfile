@@ -1,9 +1,12 @@
 # Thanks to https://hub.docker.com/r/chriswayg/tor-alpine/dockerfile (Christian chriswayg@gmail.com)
 # Dockerfile for Tor Relay Server with obfs4proxy (Multi-Stage build)
 
+ARG VERSION=0.4.9.13
+
 FROM debian:bookworm-slim AS tor-build
 ARG TARGETARCH
-ENV TOR_VERSION=0.4.9.13
+ARG VERSION
+ENV TOR_VERSION=${VERSION}
 ENV TOR_HASH=5e748d3272cdf44a7d7741173f371c8def3d96eecb77e93c89c50663ce9cc792
 
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates perl autoconf automake build-essential git libtool python3 wget gnupg dirmngr git pkg-config
@@ -74,7 +77,8 @@ RUN case "${TARGETARCH}" in \
 
 FROM debian:bookworm-slim
 
-ENV TOR_VERSION=0.4.9.13
+ARG VERSION
+ENV TOR_VERSION=${VERSION}
 
 # Copy Tor
 COPY --from=tor-build "/tmp/bin" /usr/local/bin

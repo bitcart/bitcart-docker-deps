@@ -1,13 +1,15 @@
+ARG VERSION=2026.10.7
+
 FROM --platform=$BUILDPLATFORM golang:1.27 AS builder
 
 ARG TARGETARCH
+ARG VERSION
 ENV GO111MODULE=on \
     CGO_ENABLED=0 \
-    CONTAINER_BUILD=1 \
-    CLOUDFLARED_VERSION=2026.10.7
+    CONTAINER_BUILD=1
 WORKDIR /go/src/github.com/cloudflare/cloudflared/
 
-RUN git clone --branch ${CLOUDFLARED_VERSION} --single-branch --depth 1 https://github.com/cloudflare/cloudflared.git .
+RUN git clone --branch ${VERSION} --single-branch --depth 1 https://github.com/cloudflare/cloudflared.git .
 RUN GOOS=linux GOARCH=${TARGETARCH} make cloudflared
 
 FROM gcr.io/distroless/base-debian13:nonroot

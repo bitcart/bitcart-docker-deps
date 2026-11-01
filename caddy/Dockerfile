@@ -1,5 +1,5 @@
-ARG CADDY_VERSION=2.11.6
-FROM caddy:${CADDY_VERSION}-builder AS builder
+ARG VERSION=2.11.6
+FROM caddy:${VERSION}-builder AS builder
 
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
@@ -13,6 +13,6 @@ RUN --mount=type=cache,target=/go/pkg/mod \
     --with github.com/caddyserver/transform-encoder \
     --with github.com/corazawaf/coraza-caddy/v2
 
-FROM caddy:${CADDY_VERSION}
+FROM caddy:${VERSION}
 
 COPY --from=builder /usr/bin/caddy /usr/bin/caddy
