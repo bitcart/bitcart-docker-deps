@@ -1,6 +1,7 @@
 # Thanks to https://hub.docker.com/r/chriswayg/tor-alpine/dockerfile (Christian chriswayg@gmail.com)
 # Dockerfile for Tor Relay Server with obfs4proxy (Multi-Stage build)
 
+# renovate: datasource=gitlab-tags depName=tpo/core/tor registryUrl=https://gitlab.torproject.org extractVersion=^tor-(?<version>.+)$
 ARG VERSION=0.4.9.15
 
 FROM debian:trixie-slim AS tor-build

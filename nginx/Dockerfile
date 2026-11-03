@@ -1,3 +1,4 @@
+# renovate: datasource=docker depName=nginx
 ARG VERSION=1.30.6
 ARG NGINX_FROM_IMAGE=nginx:${VERSION}
 FROM ${NGINX_FROM_IMAGE} AS builder

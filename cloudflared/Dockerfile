@@ -1,3 +1,4 @@
+# renovate: datasource=github-releases depName=cloudflare/cloudflared
 ARG VERSION=2026.10.7
 
 FROM --platform=$BUILDPLATFORM golang:1.27 AS builder

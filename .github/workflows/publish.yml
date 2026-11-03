@@ -6,14 +6,19 @@ on:
       - "*/*"
 
 concurrency:
-  group: ${{ github.workflow_ref }}-${{ github.ref_name }}
+  group: ${{ github.workflow_ref }}
   cancel-in-progress: false
+  queue: max
 
 permissions:
   contents: read
 
+defaults:
+  run:
+    shell: bash
+
 jobs:
-  parse_tag:
+  parse-tag:
     name: parse-tag
     runs-on: ubuntu-latest
     outputs:
@@ -32,14 +37,14 @@ jobs:
         run: .github/scripts/release-tags.sh "$GITHUB_REF_NAME" >> "$GITHUB_OUTPUT"
 
   build:
-    name: build-${{ needs.parse_tag.outputs.image }}
+    name: build-${{ needs.parse-tag.outputs.image }}
     uses: bitcart/bitcart-actions/.github/workflows/build-docker-image.yml@master
-    needs: parse_tag
+    needs: parse-tag
     with:
-      dockerfile: ${{ needs.parse_tag.outputs.image }}/Dockerfile
-      context: ${{ needs.parse_tag.outputs.image }}
-      image-name: ${{ needs.parse_tag.outputs.repo }}
-      tags: ${{ needs.parse_tag.outputs.tags }}
+      dockerfile: ${{ needs.parse-tag.outputs.image }}/Dockerfile
+      context: ${{ needs.parse-tag.outputs.image }}
+      image-name: ${{ needs.parse-tag.outputs.repo }}
+      tags: ${{ needs.parse-tag.outputs.tags }}
       dockerhub-user: ${{ vars.DOCKERHUB_USER }}
       dockerhub-oidc-connection-id: ${{ vars.DOCKERHUB_OIDC_CONNECTIONID }}
 
