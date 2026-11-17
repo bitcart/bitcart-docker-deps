@@ -2,7 +2,7 @@
 # Dockerfile for Tor Relay Server with obfs4proxy (Multi-Stage build)
 
 # renovate: datasource=gitlab-tags depName=tpo/core/tor registryUrl=https://gitlab.torproject.org versioning=regex:^(?<major>\d+)\.(?<minor>\d+)\.(?<patch>\d+)\.(?<build>\d+)(?:-(?<prerelease>.+))?$ extractVersion=^tor-(?<version>.+)$
-ARG VERSION=0.4.9.16
+ARG VERSION=0.4.9.17
 
 FROM debian:trixie-slim AS tor-build
 ARG TARGETARCH
