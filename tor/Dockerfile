@@ -1,16 +1,15 @@
 # Thanks to https://hub.docker.com/r/chriswayg/tor-alpine/dockerfile (Christian chriswayg@gmail.com)
 # Dockerfile for Tor Relay Server with obfs4proxy (Multi-Stage build)
 
-# renovate: datasource=gitlab-tags depName=tpo/core/tor registryUrl=https://gitlab.torproject.org extractVersion=^tor-(?<version>.+)$
+# renovate: datasource=gitlab-tags depName=tpo/core/tor registryUrl=https://gitlab.torproject.org versioning=regex:^(?<major>\d+)\.(?<minor>\d+)\.(?<patch>\d+)\.(?<build>\d+)(?:-(?<prerelease>.+))?$ extractVersion=^tor-(?<version>.+)$
 ARG VERSION=0.4.9.15
 
 FROM debian:trixie-slim AS tor-build
 ARG TARGETARCH
 ARG VERSION
 ENV TOR_VERSION=${VERSION}
-ENV TOR_HASH=1911f5b216a6814ed143a08bbcff1c6dc96d2ca3b505df9a21876080a92963f3
 
-RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates perl autoconf automake build-essential git libtool python3 wget gnupg dirmngr git pkg-config
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates perl autoconf automake build-essential git libtool python3 wget gnupg gpgv dirmngr git pkg-config
 
 # See dependency versions on https://gitlab.torproject.org/tpo/applications/tor-browser-build/-/blob/main/projects
 RUN wget -q https://github.com/madler/zlib/releases/download/v1.3.2/zlib-1.3.2.tar.gz \
@@ -44,11 +43,16 @@ RUN wget -q https://github.com/libevent/libevent/releases/download/release-2.1.1
 && make -j"$(nproc)" \
 && make install && cd .. && rm $TAR_NAME && rm -rf $FOLDER_NAME
 
+# Release signers listed on https://support.torproject.org/little-t-tor/verify-little-t-tor/
+COPY tor-signing-keys.asc /tmp/
+
 # Install Tor from source, incl. GeoIP files (get latest release version number from Tor ReleaseNotes)
 RUN TOR_TARBALL_NAME="tor-${TOR_VERSION}.tar.gz" \
       && TOR_TARBALL_LINK="https://dist.torproject.org/${TOR_TARBALL_NAME}" \
-      && wget -q $TOR_TARBALL_LINK \
-      && echo "${TOR_HASH}  ${TOR_TARBALL_NAME}" | sha256sum -c - \
+      && wget -q "$TOR_TARBALL_LINK" "$TOR_TARBALL_LINK.sha256sum" "$TOR_TARBALL_LINK.sha256sum.asc" \
+      && gpg --dearmor -o /tmp/tor.keyring /tmp/tor-signing-keys.asc \
+      && gpgv --keyring /tmp/tor.keyring "$TOR_TARBALL_NAME.sha256sum.asc" "$TOR_TARBALL_NAME.sha256sum" \
+      && sha256sum -c "$TOR_TARBALL_NAME.sha256sum" \
       && tar xf $TOR_TARBALL_NAME \
       && cd tor-$TOR_VERSION \
       && ./configure \
