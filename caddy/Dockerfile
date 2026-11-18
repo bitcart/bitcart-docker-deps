@@ -1,4 +1,4 @@
-ARG VERSION=2.11.8
+ARG VERSION=2.11.9
 FROM caddy:${VERSION}-builder AS builder
 
 RUN --mount=type=cache,target=/go/pkg/mod \
