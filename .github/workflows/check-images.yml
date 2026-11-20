@@ -1,0 +1,65 @@
+name: Check Docker Images
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - "*/**"
+      - "!.github/**"
+  pull_request:
+    paths:
+      - "*/**"
+      - "!.github/**"
+
+concurrency:
+  group: ${{ github.workflow_ref }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  changes:
+    name: changes
+    runs-on: ubuntu-latest
+    outputs:
+      images: ${{ steps.changed.outputs.images }}
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Find changed images
+        id: changed
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BEFORE: ${{ github.event.before }}
+        run: |
+          if [ "$EVENT_NAME" = pull_request ]; then
+            base=HEAD^1
+          else
+            base=$BEFORE
+          fi
+          echo "images=$(.github/scripts/changed-images.sh "$base")" >> "$GITHUB_OUTPUT"
+
+  build:
+    name: build-${{ matrix.image }}
+    uses: bitcart/bitcart-actions/.github/workflows/check-docker-image.yml@master
+    needs: changes
+    if: needs.changes.outputs.images != '[]'
+    with:
+      dockerfile: ${{ matrix.image }}/Dockerfile
+      context: ${{ matrix.image }}
+      prefix: ${{ matrix.image }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        image: ${{ fromJSON(needs.changes.outputs.images) }}

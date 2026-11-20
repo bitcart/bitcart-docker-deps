@@ -45,6 +45,7 @@ jobs:
       context: ${{ needs.parse-tag.outputs.image }}
       image-name: ${{ needs.parse-tag.outputs.repo }}
       tags: ${{ needs.parse-tag.outputs.tags }}
+      prefix: ${{ needs.parse-tag.outputs.image }}
       dockerhub-user: ${{ vars.DOCKERHUB_USER }}
       dockerhub-oidc-connection-id: ${{ vars.DOCKERHUB_OIDC_CONNECTIONID }}
 
